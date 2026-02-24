@@ -1,0 +1,6 @@
+﻿src/components/chat/ChannelIcon.tsx(1,10): error TS1484: 'ChannelType' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/chat/ChatListItem.tsx(1,10): error TS1484: 'Chat' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/chat/FilterBar.tsx(3,10): error TS1484: 'ChannelType' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/data/mockChats.ts(1,10): error TS1484: 'Chat' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/store/useChatStore.ts(2,10): error TS1484: 'Chat' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/store/useChatStore.ts(2,16): error TS1484: 'ChatFilters' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
