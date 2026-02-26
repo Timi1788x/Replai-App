@@ -1,29 +1,61 @@
 import { useState } from 'react';
-import { useChatStore } from '../../store/useChatStore';
+import { supabase } from '../../api/supabaseClient';
+import { useSendMessage } from '../../api/useSendMessage';
+import type { ConversationRow } from '../../types/database';
 import { Sparkles, Check, Pencil, Trash2, X } from 'lucide-react';
 
 interface AiDraftBannerProps {
-    chatId: string;
+    conversation: ConversationRow;
 }
 
-export default function AiDraftBanner({ chatId }: AiDraftBannerProps) {
-    const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
-    const { approveAiDraft, editAiDraft, deleteAiDraft } = useChatStore();
-
+export default function AiDraftBanner({ conversation }: AiDraftBannerProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState('');
+    const sendMessageMutation = useSendMessage();
 
-    if (!chat?.aiDraft || chat.aiDraft.status !== 'pending') return null;
+    if (!conversation.ai_draft_reply || conversation.ai_draft_status !== 'pending') return null;
+
+    const handleApprove = async () => {
+        // Send the draft as a host message
+        sendMessageMutation.mutate({
+            conversation_id: conversation.id,
+            sender: 'host',
+            body: conversation.ai_draft_reply!,
+            status: 'pending',
+        });
+        // Update the conversation to mark draft as approved
+        await supabase
+            .from('conversations')
+            .update({ ai_draft_status: 'approved' })
+            .eq('id', conversation.id);
+    };
 
     const handleEdit = () => {
-        setEditText(chat.aiDraft!.text);
+        setEditText(conversation.ai_draft_reply!);
         setIsEditing(true);
     };
 
-    const handleSaveEdit = () => {
-        editAiDraft(chatId, editText);
+    const handleSaveEdit = async () => {
+        // Send the edited text as a host message
+        sendMessageMutation.mutate({
+            conversation_id: conversation.id,
+            sender: 'host',
+            body: editText,
+            status: 'pending',
+        });
+        // Mark draft as edited
+        await supabase
+            .from('conversations')
+            .update({ ai_draft_status: 'edited', ai_draft_reply: editText })
+            .eq('id', conversation.id);
         setIsEditing(false);
-        approveAiDraft(chatId);
+    };
+
+    const handleDelete = async () => {
+        await supabase
+            .from('conversations')
+            .update({ ai_draft_status: 'deleted' })
+            .eq('id', conversation.id);
     };
 
     return (
@@ -45,7 +77,7 @@ export default function AiDraftBanner({ chatId }: AiDraftBannerProps) {
                     />
                 ) : (
                     <p className="text-sm text-dark-200 leading-relaxed whitespace-pre-line">
-                        {chat.aiDraft.text}
+                        {conversation.ai_draft_reply}
                     </p>
                 )}
             </div>
@@ -72,7 +104,7 @@ export default function AiDraftBanner({ chatId }: AiDraftBannerProps) {
                 ) : (
                     <>
                         <button
-                            onClick={() => approveAiDraft(chatId)}
+                            onClick={handleApprove}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent-dark transition-colors cursor-pointer"
                         >
                             <Check size={12} />
@@ -86,7 +118,7 @@ export default function AiDraftBanner({ chatId }: AiDraftBannerProps) {
                             Edit
                         </button>
                         <button
-                            onClick={() => deleteAiDraft(chatId)}
+                            onClick={handleDelete}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-700 text-red-400 text-xs font-medium hover:bg-red-500/15 transition-colors cursor-pointer"
                         >
                             <Trash2 size={12} />

@@ -1,18 +1,132 @@
 import { useState } from 'react';
-import { User, Mail, Lock, Bell, LogOut, Shield, Save } from 'lucide-react';
+import { User, Mail, Lock, Bell, LogOut, Shield, Save, Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../api/useAuth';
 
 export default function ProfilePage() {
-    const [profile, setProfile] = useState({
-        name: 'Alex Fuchs',
-        email: 'alex@antigravity.app',
-        phone: '+41 79 123 45 67',
-    });
+    const { user, loading, isAuthenticated, signInWithEmail, signOut } = useAuth();
 
+    // ── Login form state ──
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState('');
+    const [loginLoading, setLoginLoading] = useState(false);
+
+    // ── Profile state (must be before early returns — Rules of Hooks) ──
     const [notifications, setNotifications] = useState({
         email: true,
         push: true,
         sms: false,
     });
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoginError('');
+        setLoginLoading(true);
+        try {
+            await signInWithEmail(email, password);
+        } catch (err: unknown) {
+            setLoginError(err instanceof Error ? err.message : 'Login failed');
+        } finally {
+            setLoginLoading(false);
+        }
+    };
+
+    const handleSignOut = async () => {
+        try {
+            await signOut();
+        } catch {
+            // silently fail
+        }
+    };
+
+    // ── Loading state ──
+    if (loading) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <Loader2 size={24} className="text-accent animate-spin" />
+            </div>
+        );
+    }
+
+    // ── Not authenticated → Login form ──
+    if (!isAuthenticated) {
+        return (
+            <div className="h-full flex items-center justify-center p-6">
+                <div className="w-full max-w-sm space-y-6">
+                    {/* Logo / header */}
+                    <div className="text-center space-y-2">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center mx-auto shadow-lg shadow-accent/20">
+                            <User size={28} className="text-white" />
+                        </div>
+                        <h1 className="text-xl font-bold text-white">Antigravity</h1>
+                        <p className="text-sm text-dark-400">Sign in to your host account</p>
+                    </div>
+
+                    {/* Login form */}
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Email</label>
+                            <div className="relative">
+                                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500" />
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="host@example.com"
+                                    required
+                                    className="w-full bg-dark-800 text-dark-200 text-sm rounded-lg pl-9 pr-3 py-2.5 border border-dark-700 outline-none focus:border-accent/50 transition-colors placeholder:text-dark-600"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Password</label>
+                            <div className="relative">
+                                <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500" />
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    required
+                                    className="w-full bg-dark-800 text-dark-200 text-sm rounded-lg pl-9 pr-3 py-2.5 border border-dark-700 outline-none focus:border-accent/50 transition-colors placeholder:text-dark-600"
+                                />
+                            </div>
+                        </div>
+
+                        {loginError && (
+                            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">
+                                <AlertCircle size={14} />
+                                {loginError}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={loginLoading}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-dark transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                            {loginLoading ? (
+                                <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                                <>
+                                    <LogOut size={14} className="rotate-180" />
+                                    Sign In
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    <p className="text-center text-[10px] text-dark-500">
+                        Host accounts are created by the development team.
+                        <br />Contact your admin if you don't have credentials.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Authenticated → Profile & Settings ──
+    const initials = (user?.email ?? 'U')[0].toUpperCase();
 
     return (
         <div className="h-full overflow-y-auto p-6">
@@ -31,16 +145,21 @@ export default function ProfilePage() {
                 {/* Avatar section */}
                 <div className="bg-dark-900 rounded-2xl border border-dark-800 p-6 flex items-center gap-5">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-accent/20">
-                        AF
+                        {initials}
                     </div>
                     <div>
-                        <h2 className="text-sm font-semibold text-white">{profile.name}</h2>
-                        <p className="text-xs text-dark-400">{profile.email}</p>
-                        <p className="text-[10px] text-dark-500 mt-1">Host since January 2024</p>
+                        <h2 className="text-sm font-semibold text-white">{user?.email}</h2>
+                        <p className="text-[10px] text-dark-500 mt-1">
+                            Host ID: <span className="font-mono text-dark-400">{user?.id.slice(0, 8)}…</span>
+                        </p>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 rounded-full px-3 py-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        Connected
                     </div>
                 </div>
 
-                {/* Profile info */}
+                {/* Account info */}
                 <div className="bg-dark-900 rounded-2xl border border-dark-800 p-6 space-y-4">
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                         <Mail size={14} className="text-accent" />
@@ -48,35 +167,16 @@ export default function ProfilePage() {
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Full Name</label>
-                            <input
-                                value={profile.name}
-                                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                                className="w-full bg-dark-800 text-dark-200 text-sm rounded-lg px-3 py-2 border border-dark-700 outline-none focus:border-accent/50 transition-colors"
-                            />
-                        </div>
-                        <div>
                             <label className="block text-xs font-medium text-dark-400 mb-1.5">Email</label>
-                            <input
-                                value={profile.email}
-                                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                                className="w-full bg-dark-800 text-dark-200 text-sm rounded-lg px-3 py-2 border border-dark-700 outline-none focus:border-accent/50 transition-colors"
-                            />
+                            <p className="text-sm text-dark-200 bg-dark-800 rounded-lg px-3 py-2 border border-dark-700">
+                                {user?.email}
+                            </p>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Phone</label>
-                            <input
-                                value={profile.phone}
-                                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                                className="w-full bg-dark-800 text-dark-200 text-sm rounded-lg px-3 py-2 border border-dark-700 outline-none focus:border-accent/50 transition-colors"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Password</label>
-                            <button className="flex items-center gap-2 text-xs text-accent hover:text-accent-light transition-colors cursor-pointer">
-                                <Lock size={12} />
-                                Change Password
-                            </button>
+                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Host UUID</label>
+                            <p className="text-sm text-dark-200 bg-dark-800 rounded-lg px-3 py-2 border border-dark-700 font-mono text-xs">
+                                {user?.id}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -131,7 +231,10 @@ export default function ProfilePage() {
                         <Save size={14} />
                         Save Changes
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors cursor-pointer">
+                    <button
+                        onClick={handleSignOut}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-red-400 text-sm font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
+                    >
                         <LogOut size={14} />
                         Sign Out
                     </button>

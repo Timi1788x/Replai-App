@@ -1,30 +1,38 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-const mockReservations = [
-    { property: 'Alpine Chalet Zermatt', guest: 'Carlos Mendez', start: 13, end: 17, color: '#FF5A5F' },
-    { property: 'Alpine Chalet Zermatt', guest: 'Olga Novikova', start: 22, end: 28, color: '#FF5A5F' },
-    { property: 'Lakeside Studio Lucerne', guest: 'James O\'Brien', start: 10, end: 14, color: '#25D366' },
-    { property: 'Lakeside Studio Lucerne', guest: 'Priya Sharma', start: 20, end: 25, color: '#25D366' },
-    { property: 'City Loft Zurich', guest: 'Liam Johnson', start: 5, end: 9, color: '#4A90D9' },
-    { property: 'City Loft Zurich', guest: 'David Kim', start: 15, end: 19, color: '#4A90D9' },
-    { property: 'Mountain View Apartment Interlaken', guest: 'Anna Petrova', start: 8, end: 12, color: '#A855F7' },
-    { property: 'Mountain View Apartment Interlaken', guest: 'Isabella Rossi', start: 18, end: 24, color: '#A855F7' },
-];
-
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function CalendarPage() {
-    const [currentMonth, setCurrentMonth] = useState(1); // Feb 2026
-    const [currentYear] = useState(2026);
+    const now = new Date();
+    const [currentMonth, setCurrentMonth] = useState(now.getMonth());
+    const [currentYear, setCurrentYear] = useState(now.getFullYear());
 
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const blanks = Array.from({ length: firstDayOfWeek }, (_, i) => i);
 
-    const getReservationsForDay = (day: number) =>
-        mockReservations.filter((r) => day >= r.start && day <= r.end);
+    const isToday = (day: number) =>
+        day === now.getDate() && currentMonth === now.getMonth() && currentYear === now.getFullYear();
+
+    const handlePrev = () => {
+        if (currentMonth === 0) {
+            setCurrentMonth(11);
+            setCurrentYear((y) => y - 1);
+        } else {
+            setCurrentMonth((m) => m - 1);
+        }
+    };
+
+    const handleNext = () => {
+        if (currentMonth === 11) {
+            setCurrentMonth(0);
+            setCurrentYear((y) => y + 1);
+        } else {
+            setCurrentMonth((m) => m + 1);
+        }
+    };
 
     return (
         <div className="h-full overflow-y-auto p-6">
@@ -42,7 +50,7 @@ export default function CalendarPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => setCurrentMonth((m) => Math.max(0, m - 1))}
+                            onClick={handlePrev}
                             className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-300 transition-colors cursor-pointer"
                         >
                             <ChevronLeft size={16} />
@@ -51,7 +59,7 @@ export default function CalendarPage() {
                             {months[currentMonth]} {currentYear}
                         </span>
                         <button
-                            onClick={() => setCurrentMonth((m) => Math.min(11, m + 1))}
+                            onClick={handleNext}
                             className="p-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-300 transition-colors cursor-pointer"
                         >
                             <ChevronRight size={16} />
@@ -75,48 +83,26 @@ export default function CalendarPage() {
                         {blanks.map((i) => (
                             <div key={`blank-${i}`} className="min-h-[100px] border-b border-r border-dark-800 bg-dark-900/50" />
                         ))}
-                        {days.map((day) => {
-                            const reservations = getReservationsForDay(day);
-                            const isToday = day === 24 && currentMonth === 1;
-                            return (
-                                <div
-                                    key={day}
-                                    className={`min-h-[100px] p-2 border-b border-r border-dark-800 transition-colors hover:bg-dark-800/30
-                    ${isToday ? 'bg-accent/5' : ''}`}
-                                >
-                                    <span className={`text-xs font-medium inline-flex items-center justify-center w-6 h-6 rounded-full
-                    ${isToday ? 'bg-accent text-white' : 'text-dark-300'}`}>
-                                        {day}
-                                    </span>
-                                    <div className="mt-1 space-y-0.5">
-                                        {reservations.map((r, i) => (
-                                            <div
-                                                key={i}
-                                                className="text-[9px] font-medium px-1.5 py-0.5 rounded truncate"
-                                                style={{ backgroundColor: `${r.color}20`, color: r.color }}
-                                                title={`${r.guest} — ${r.property}`}
-                                            >
-                                                {r.guest.split(' ')[0]}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                        {days.map((day) => (
+                            <div
+                                key={day}
+                                className={`min-h-[100px] p-2 border-b border-r border-dark-800 transition-colors hover:bg-dark-800/30
+                    ${isToday(day) ? 'bg-accent/5' : ''}`}
+                            >
+                                <span className={`text-xs font-medium inline-flex items-center justify-center w-6 h-6 rounded-full
+                    ${isToday(day) ? 'bg-accent text-white' : 'text-dark-300'}`}>
+                                    {day}
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* Legend */}
-                <div className="flex flex-wrap gap-4 mt-4 px-2">
-                    {[...new Set(mockReservations.map((r) => r.property))].map((property) => {
-                        const color = mockReservations.find((r) => r.property === property)!.color;
-                        return (
-                            <div key={property} className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
-                                <span className="text-xs text-dark-400">{property}</span>
-                            </div>
-                        );
-                    })}
+                {/* Empty state hint */}
+                <div className="mt-4 px-2 text-center">
+                    <p className="text-xs text-dark-500">
+                        Reservations will appear here once synced from your booking channels.
+                    </p>
                 </div>
             </div>
         </div>

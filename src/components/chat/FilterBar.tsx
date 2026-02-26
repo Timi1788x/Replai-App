@@ -1,6 +1,6 @@
 import { useChatStore } from '../../store/useChatStore';
-import { properties } from '../../data/mockChats';
-import type { ChannelType } from '../../types/chat';
+import { useConversations } from '../../api/useConversations';
+import type { ChannelType } from '../../types/database';
 import { Filter, X } from 'lucide-react';
 
 const channels: { value: ChannelType | 'all'; label: string }[] = [
@@ -13,6 +13,12 @@ const channels: { value: ChannelType | 'all'; label: string }[] = [
 
 export default function FilterBar() {
     const { filters, setFilter, resetFilters } = useChatStore();
+    const { data: conversations } = useConversations();
+
+    // Derive property list from actual conversation data (joined from properties table)
+    const properties = Array.from(
+        new Set((conversations ?? []).map((c) => c.property?.name).filter(Boolean) as string[])
+    ).sort();
 
     const hasActiveFilters =
         filters.channel !== 'all' ||

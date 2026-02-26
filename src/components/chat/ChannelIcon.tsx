@@ -1,4 +1,4 @@
-import type { ChannelType } from '../../types/chat';
+import type { ChannelType } from '../../types/database';
 import { MessageSquare, Phone, Mail, Smartphone } from 'lucide-react';
 
 interface ChannelIconProps {
