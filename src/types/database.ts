@@ -98,6 +98,47 @@ export interface InsertMessagePayload {
     status: 'pending';
 }
 
+/** Enhanced payload for useSendMessage (supports attachments) */
+export interface SendMessagePayload {
+    conversation_id: string;
+    message_text: string;
+    attachment_url?: string;
+}
+
+/** Payload for useMarkAsRead */
+export interface MarkAsReadPayload {
+    conversation_id: string;
+}
+
+/** Payload for useUpdateDraft */
+export interface UpdateDraftPayload {
+    conversation_id: string;
+    edited_text: string;
+}
+
+// ─── Reservations ─────────────────────────────────────────────
+
+export type ReservationStatus = 'confirmed' | 'pending' | 'cancelled';
+
+/** Row shape: `reservations` table (with joined relations) */
+export interface ReservationRow {
+    id: string;
+    host_id: string;
+    property_id: string;
+    guest_id: string;
+    check_in: string; // DATE as ISO string
+    check_out: string;
+    status: ReservationStatus;
+    external_id: string | null;
+    notes: string | null;
+    metadata: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+    // Joined from FK relations (populated by select query)
+    property: { name: string } | null;
+    guest: { display_name: string; avatar_url: string | null } | null;
+}
+
 /** Payload for the knowledge-base sync webhook */
 export interface KnowledgeBaseSyncPayload {
     property_id: string;

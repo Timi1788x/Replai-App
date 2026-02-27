@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabaseClient';
+import { useAuth } from './useAuth';
 import type { ConversationRow } from '../types/database';
 
 // ─── Query Key Factory ────────────────────────────────────────
@@ -35,6 +36,7 @@ async function fetchConversations(): Promise<ConversationRow[]> {
  */
 export function useConversations() {
     const queryClient = useQueryClient();
+    const { isAuthenticated } = useAuth();
 
     // ── Realtime subscription ──
     useEffect(() => {
@@ -62,13 +64,26 @@ export function useConversations() {
                     table: 'conversations',
                 },
                 (payload) => {
-                    // Patch the updated row into the cached list
+                    // Realtime payloads only contain the table columns (no joins).
+                    // We must merge the updated fields into the existing cached row
+                    // to preserve the `property` and `guest` relation objects.
                     queryClient.setQueryData<ConversationRow[]>(
                         conversationKeys.all,
-                        (old) =>
-                            old?.map((c) =>
-                                c.id === payload.new.id ? payload.new : c,
-                            ) ?? [],
+                        (old) => {
+                            if (!old) return [];
+                            return old.map((c) => {
+                                if (c.id === payload.new.id) {
+                                    // Keep existing relations, overwrite primitive columns
+                                    return {
+                                        ...c,
+                                        ...payload.new,
+                                        property: c.property,
+                                        guest: c.guest
+                                    };
+                                }
+                                return c;
+                            });
+                        }
                     );
                 },
             )
@@ -83,6 +98,7 @@ export function useConversations() {
     return useQuery({
         queryKey: conversationKeys.all,
         queryFn: fetchConversations,
+        enabled: isAuthenticated,   // Don't fetch until authenticated
         staleTime: 1000 * 60,       // 1 min — Realtime keeps it fresh
         refetchOnWindowFocus: true,  // Catch up when tab becomes active
     });
