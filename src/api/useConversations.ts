@@ -73,10 +73,17 @@ export function useConversations() {
                             if (!old) return [];
                             return old.map((c) => {
                                 if (c.id === payload.new.id) {
-                                    // Keep existing relations, overwrite primitive columns
+                                    // Keep existing relations, overwrite primitive columns,
+                                    // and ensure boolean values are correctly parsed (Postgres sometimes sends 't'/'f')
+                                    const parsedUnread =
+                                        typeof payload.new.unread === 'string'
+                                            ? payload.new.unread === 't'
+                                            : !!payload.new.unread;
+
                                     return {
                                         ...c,
                                         ...payload.new,
+                                        unread: parsedUnread,
                                         property: c.property,
                                         guest: c.guest
                                     };

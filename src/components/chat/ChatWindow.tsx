@@ -3,6 +3,7 @@ import { useChatStore } from '../../store/useChatStore';
 import { useConversations } from '../../api/useConversations';
 import { useMessages } from '../../api/useMessages';
 import { useSendMessage } from '../../api/useSendMessage';
+import { useMarkAsRead } from '../../api/useChatMutations';
 import ChannelIcon from './ChannelIcon';
 import AiDraftBanner from './AiDraftBanner';
 import { Send, MoreVertical, MessageSquare, Loader2 } from 'lucide-react';
@@ -12,6 +13,7 @@ export default function ChatWindow() {
     const { data: conversations } = useConversations();
     const { data: messages, isLoading: messagesLoading } = useMessages(selectedChatId ?? '');
     const sendMessageMutation = useSendMessage();
+    const markAsReadMutation = useMarkAsRead();
 
     const [inputText, setInputText] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -21,6 +23,13 @@ export default function ChatWindow() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages?.length]);
+
+    // Mark as read when conversation is opened and is unread
+    useEffect(() => {
+        if (conversation && conversation.unread) {
+            markAsReadMutation.mutate({ conversation_id: conversation.id });
+        }
+    }, [conversation?.id, conversation?.unread]);
 
     const handleSend = () => {
         if (!inputText.trim() || !selectedChatId) return;
