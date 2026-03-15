@@ -1,4 +1,4 @@
-export type ChannelType = 'airbnb' | 'whatsapp' | 'email' | 'sms';
+export type ChannelType = 'airbnb' | 'whatsapp' | 'email' | 'sms' | 'telegram';
 
 export interface Message {
     id: string;

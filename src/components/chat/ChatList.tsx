@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import { useChatStore } from '../../store/useChatStore';
 import { useConversations } from '../../api/useConversations';
 import ChatListItem from './ChatListItem';
 import FilterBar from './FilterBar';
-import { Inbox, Loader2, WifiOff } from 'lucide-react';
+import NewChatModal from './NewChatModal';
+import { Inbox, Loader2, WifiOff, Plus } from 'lucide-react';
 import { useAuth } from '../../api/useAuth';
 
 export default function ChatList() {
     const { selectedChatId, selectChat, filters } = useChatStore();
     const { user } = useAuth();
     const { data: conversations, isLoading, isError } = useConversations();
+    const [showNewChat, setShowNewChat] = useState(false);
 
     // Apply client-side filters to Supabase data
     let filtered = conversations ?? [];
@@ -46,12 +49,19 @@ export default function ChatList() {
                     <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
                         <Inbox size={16} className="text-accent" />
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-0">
                         <h2 className="text-sm font-semibold text-white">Unified Inbox</h2>
                         <p className="text-[10px] text-dark-400">
                             {isLoading ? 'Loading…' : `${filtered.length} conversations`}
                         </p>
                     </div>
+                    <button
+                        onClick={() => setShowNewChat(true)}
+                        className="w-8 h-8 rounded-lg bg-accent/15 hover:bg-accent/25 flex items-center justify-center text-accent transition-colors cursor-pointer"
+                        title="New conversation"
+                    >
+                        <Plus size={16} />
+                    </button>
                 </div>
             </div>
 
@@ -85,6 +95,9 @@ export default function ChatList() {
                     ))
                 )}
             </div>
+
+            {/* New Chat Modal */}
+            <NewChatModal isOpen={showNewChat} onClose={() => setShowNewChat(false)} />
         </div>
     );
 }

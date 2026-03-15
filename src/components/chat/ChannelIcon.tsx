@@ -1,5 +1,5 @@
 import type { ChannelType } from '../../types/database';
-import { MessageSquare, Phone, Mail, Smartphone } from 'lucide-react';
+import { MessageSquare, Phone, Mail, Smartphone, Send } from 'lucide-react';
 
 interface ChannelIconProps {
     channel: ChannelType;
@@ -7,15 +7,18 @@ interface ChannelIconProps {
     className?: string;
 }
 
-const channelConfig: Record<ChannelType, { icon: typeof MessageSquare; color: string; label: string }> = {
+const channelConfig: Partial<Record<ChannelType, { icon: typeof MessageSquare; color: string; label: string }>> = {
     airbnb: { icon: MessageSquare, color: '#FF5A5F', label: 'Airbnb' },
     whatsapp: { icon: Phone, color: '#25D366', label: 'WhatsApp' },
     email: { icon: Mail, color: '#4A90D9', label: 'Email' },
     sms: { icon: Smartphone, color: '#A855F7', label: 'SMS' },
+    telegram: { icon: Send, color: '#26A5E4', label: 'Telegram' },
 };
 
+const fallbackConfig = { icon: MessageSquare, color: '#6B7280', label: 'Other' };
+
 export default function ChannelIcon({ channel, size = 18, className = '' }: ChannelIconProps) {
-    const config = channelConfig[channel];
+    const config = channelConfig[channel] ?? fallbackConfig;
     const Icon = config.icon;
 
     return (

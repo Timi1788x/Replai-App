@@ -9,6 +9,7 @@ const channels: { value: ChannelType | 'all'; label: string }[] = [
     { value: 'whatsapp', label: 'WhatsApp' },
     { value: 'email', label: 'Email' },
     { value: 'sms', label: 'SMS' },
+    { value: 'telegram', label: 'Telegram' },
 ];
 
 export default function FilterBar() {

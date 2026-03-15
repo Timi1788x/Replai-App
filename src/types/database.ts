@@ -8,7 +8,8 @@ export type ChannelType =
     | 'booking_com'
     | 'vrbo'
     | 'direct'
-    | 'sms';
+    | 'sms'
+    | 'telegram';
 
 export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 export type MessageSender = 'host' | 'guest' | 'system';
@@ -152,3 +153,18 @@ export interface KnowledgeBaseSyncPayload {
     house_rules: string;
     additional_documents?: string[];
 }
+
+// ─── Property Knowledge Base ──────────────────────────────────
+// Deep JSONB AI knowledge — re-exported for single entry point.
+
+export type {
+    PropertyKnowledgePayload,
+    PropertyKnowledgeRow,
+    GuestFacingContext,
+    InternalOperations,
+    MemoryType,
+    PropertyKnowledgeEmbeddingRow,
+    GuestMemoryEmbeddingRow,
+    PropertyKnowledgeMatch,
+    GuestMemoryMatch,
+} from './propertyKnowledge';

@@ -16,7 +16,10 @@ export default function Sidebar() {
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center shadow-lg shadow-accent/20">
                     <Zap size={20} className="text-white" />
                 </div>
-                <span className="text-[9px] font-bold text-dark-400 tracking-widest uppercase mt-1">PACKED</span>
+                <span className="text-[9px] font-bold tracking-widest uppercase mt-1 text-center leading-tight">
+                    <span className="text-dark-400 block">Host</span>
+                    <span className="text-accent block">Buddy</span>
+                </span>
             </div>
 
             {/* Nav items */}

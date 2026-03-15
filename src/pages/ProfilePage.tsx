@@ -58,7 +58,7 @@ export default function ProfilePage() {
                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center mx-auto shadow-lg shadow-accent/20">
                             <User size={28} className="text-white" />
                         </div>
-                        <h1 className="text-xl font-bold text-white">Antigravity</h1>
+                        <h1 className="text-xl font-bold text-white">Hostbuddy</h1>
                         <p className="text-sm text-dark-400">Sign in to your host account</p>
                     </div>
 
