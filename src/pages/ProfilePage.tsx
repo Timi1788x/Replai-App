@@ -1,35 +1,19 @@
 import { useState } from 'react';
-import { User, Mail, Lock, Bell, LogOut, Shield, Save, Loader2, AlertCircle } from 'lucide-react';
+import { User, Mail, Bell, LogOut, Shield, Save, Loader2, Zap, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../api/useAuth';
+import { useHostSettings, useToggleAutoRespond } from '../api/useHostSettings';
 
 export default function ProfilePage() {
-    const { user, loading, isAuthenticated, signInWithEmail, signOut } = useAuth();
+    const { user, loading, signOut } = useAuth();
+    const { autoRespondEnabled, isLoading: settingsLoading } = useHostSettings();
+    const toggleAutoRespond = useToggleAutoRespond();
 
-    // ── Login form state ──
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loginError, setLoginError] = useState('');
-    const [loginLoading, setLoginLoading] = useState(false);
-
-    // ── Profile state (must be before early returns — Rules of Hooks) ──
     const [notifications, setNotifications] = useState({
         email: true,
         push: true,
         sms: false,
     });
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoginError('');
-        setLoginLoading(true);
-        try {
-            await signInWithEmail(email, password);
-        } catch (err: unknown) {
-            setLoginError(err instanceof Error ? err.message : 'Login failed');
-        } finally {
-            setLoginLoading(false);
-        }
-    };
+    const [showAutoRespondConfirm, setShowAutoRespondConfirm] = useState(false);
 
     const handleSignOut = async () => {
         try {
@@ -39,7 +23,21 @@ export default function ProfilePage() {
         }
     };
 
-    // ── Loading state ──
+    const handleAutoRespondToggle = () => {
+        if (!autoRespondEnabled) {
+            // Enabling — show confirmation first
+            setShowAutoRespondConfirm(true);
+        } else {
+            // Disabling — no confirmation needed
+            toggleAutoRespond.mutate(false);
+        }
+    };
+
+    const confirmEnableAutoRespond = () => {
+        toggleAutoRespond.mutate(true);
+        setShowAutoRespondConfirm(false);
+    };
+
     if (loading) {
         return (
             <div className="h-full flex items-center justify-center">
@@ -48,84 +46,6 @@ export default function ProfilePage() {
         );
     }
 
-    // ── Not authenticated → Login form ──
-    if (!isAuthenticated) {
-        return (
-            <div className="h-full flex items-center justify-center p-6">
-                <div className="w-full max-w-sm space-y-6">
-                    {/* Logo / header */}
-                    <div className="text-center space-y-2">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center mx-auto shadow-lg shadow-accent/20">
-                            <User size={28} className="text-white" />
-                        </div>
-                        <h1 className="text-xl font-bold text-white">Hostbuddy</h1>
-                        <p className="text-sm text-dark-400">Sign in to your host account</p>
-                    </div>
-
-                    {/* Login form */}
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Email</label>
-                            <div className="relative">
-                                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500" />
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="host@example.com"
-                                    required
-                                    className="w-full bg-dark-800 text-dark-200 text-sm rounded-lg pl-9 pr-3 py-2.5 border border-dark-700 outline-none focus:border-accent/50 transition-colors placeholder:text-dark-600"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-dark-400 mb-1.5">Password</label>
-                            <div className="relative">
-                                <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dark-500" />
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    required
-                                    className="w-full bg-dark-800 text-dark-200 text-sm rounded-lg pl-9 pr-3 py-2.5 border border-dark-700 outline-none focus:border-accent/50 transition-colors placeholder:text-dark-600"
-                                />
-                            </div>
-                        </div>
-
-                        {loginError && (
-                            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">
-                                <AlertCircle size={14} />
-                                {loginError}
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loginLoading}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-dark transition-colors disabled:opacity-50 cursor-pointer"
-                        >
-                            {loginLoading ? (
-                                <Loader2 size={16} className="animate-spin" />
-                            ) : (
-                                <>
-                                    <LogOut size={14} className="rotate-180" />
-                                    Sign In
-                                </>
-                            )}
-                        </button>
-                    </form>
-
-                    <p className="text-center text-[10px] text-dark-500">
-                        Host accounts are created by the development team.
-                        <br />Contact your admin if you don't have credentials.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    // ── Authenticated → Profile & Settings ──
     const initials = (user?.email ?? 'U')[0].toUpperCase();
 
     return (
@@ -178,6 +98,35 @@ export default function ProfilePage() {
                                 {user?.id}
                             </p>
                         </div>
+                    </div>
+                </div>
+
+                {/* Automation */}
+                <div className="bg-dark-900 rounded-2xl border border-dark-800 p-6 space-y-4">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Zap size={14} className="text-accent" />
+                        Automation
+                    </h3>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-dark-300">Auto-respond</p>
+                            <p className="text-[10px] text-dark-500 mt-0.5">
+                                AI drafts are sent automatically without host approval. You can pause per conversation.
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleAutoRespondToggle}
+                            disabled={settingsLoading || toggleAutoRespond.isPending}
+                            className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer disabled:opacity-50 ${
+                                autoRespondEnabled ? 'bg-accent' : 'bg-dark-600'
+                            }`}
+                        >
+                            <span
+                                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                                    autoRespondEnabled ? 'left-5.5' : 'left-0.5'
+                                }`}
+                            />
+                        </button>
                     </div>
                 </div>
 
@@ -240,6 +189,39 @@ export default function ProfilePage() {
                     </button>
                 </div>
             </div>
+
+            {/* ── Auto-respond confirmation modal ── */}
+            {showAutoRespondConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-dark-900 border border-dark-700 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={18} className="text-amber-400" />
+                            </div>
+                            <h2 className="text-base font-semibold text-white">Enable Auto-respond?</h2>
+                        </div>
+                        <p className="text-sm text-dark-300 leading-relaxed mb-6">
+                            AI draft replies will be <span className="text-white font-medium">sent automatically</span> to
+                            your guests without requiring your approval. You can pause this per conversation at any time,
+                            or turn it off here.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowAutoRespondConfirm(false)}
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-dark-800 text-dark-300 text-sm font-medium hover:bg-dark-700 transition-colors cursor-pointer border border-dark-700"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmEnableAutoRespond}
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent-dark transition-colors cursor-pointer"
+                            >
+                                Enable
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

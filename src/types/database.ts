@@ -64,6 +64,7 @@ export interface ConversationRow {
     metadata: Record<string, unknown>;
     created_at: string;
     updated_at: string;
+    auto_respond_paused_until: string | null;
     // Joined from FK relations (populated by select query)
     property: { name: string } | null;
     guest: { display_name: string; avatar_url: string | null } | null;
@@ -115,6 +116,26 @@ export interface MarkAsReadPayload {
 export interface UpdateDraftPayload {
     conversation_id: string;
     edited_text: string;
+}
+
+/** Payload for useDeleteMessage */
+export interface DeleteMessagePayload {
+    message_id: string;
+    conversation_id: string;
+}
+
+/** Payload for usePauseAutoRespond */
+export interface PauseAutoRespondPayload {
+    conversation_id: string;
+    duration_seconds: number;
+}
+
+/** Row shape: `host_settings` table */
+export interface HostSettingsRow {
+    user_id: string;
+    auto_respond_enabled: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 // ─── Reservations ─────────────────────────────────────────────

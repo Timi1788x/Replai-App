@@ -3,19 +3,23 @@ import { useChatStore } from '../../store/useChatStore';
 import { useConversations } from '../../api/useConversations';
 import { useMessages } from '../../api/useMessages';
 import { useSendMessage } from '../../api/useSendMessage';
-import { useMarkAsRead } from '../../api/useChatMutations';
+import { useMarkAsRead, useDeleteMessage } from '../../api/useChatMutations';
 import ChannelIcon from './ChannelIcon';
 import AiDraftBanner from './AiDraftBanner';
-import { Send, MoreVertical, MessageSquare, Loader2 } from 'lucide-react';
+import { Send, MoreVertical, MessageSquare, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
 
 export default function ChatWindow() {
     const { selectedChatId } = useChatStore();
     const { data: conversations } = useConversations();
-    const { data: messages, isLoading: messagesLoading } = useMessages(selectedChatId ?? '');
+    const { data: messages, isLoading: messagesLoading } = useMessages(selectedChatId);
     const sendMessageMutation = useSendMessage();
     const markAsReadMutation = useMarkAsRead();
 
+    const deleteMessageMutation = useDeleteMessage();
+
     const [inputText, setInputText] = useState('');
+    const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const conversation = conversations?.find((c) => c.id === selectedChatId);
@@ -24,12 +28,15 @@ export default function ChatWindow() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages?.length]);
 
-    // Mark as read when conversation is opened and is unread
+    // Mark as read only when the user clicks into a conversation (selection changes).
+    // Do NOT react to conversation.unread changing — that causes a race where
+    // realtime sets unread=true and this effect immediately clears it.
     useEffect(() => {
         if (conversation && conversation.unread) {
             markAsReadMutation.mutate({ conversation_id: conversation.id });
         }
-    }, [conversation?.id, conversation?.unread]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [conversation?.id]);
 
     const handleSend = () => {
         if (!inputText.trim() || !selectedChatId) return;
@@ -80,6 +87,11 @@ export default function ChatWindow() {
                 </button>
             </div>
 
+            {/* Click-outside overlay — closes any open message menu */}
+            {openMenuId && (
+                <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+            )}
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
                 {messagesLoading ? (
@@ -89,11 +101,50 @@ export default function ChatWindow() {
                 ) : (
                     (messages ?? []).map((msg) => {
                         const isHost = msg.sender === 'host';
+                        const isMenuOpen = openMenuId === msg.id;
+                        const isHovered = hoveredMessageId === msg.id;
                         return (
-                            <div key={msg.id} className={`flex ${isHost ? 'justify-end' : 'justify-start'}`}>
+                            <div
+                                key={msg.id}
+                                className={`flex items-end gap-1.5 ${isHost ? 'justify-end' : 'justify-start'}`}
+                                onMouseEnter={() => isHost && setHoveredMessageId(msg.id)}
+                                onMouseLeave={() => { setHoveredMessageId(null); }}
+                            >
+                                {/* Action button — only for host messages, left of bubble */}
+                                {isHost && (
+                                    <div className="relative z-20 self-center">
+                                        <button
+                                            className={`p-1 rounded-md text-dark-500 hover:text-dark-300 hover:bg-dark-800 transition-all ${
+                                                isHovered || isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                                            }`}
+                                            onClick={() => setOpenMenuId(isMenuOpen ? null : msg.id)}
+                                        >
+                                            <MoreHorizontal size={14} />
+                                        </button>
+                                        {isMenuOpen && (
+                                            <div className="absolute bottom-full right-0 mb-1 bg-dark-800 border border-dark-700 rounded-xl shadow-xl py-1 min-w-[140px]">
+                                                <button
+                                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-dark-700 transition-colors rounded-lg mx-0.5"
+                                                    onClick={() => {
+                                                        deleteMessageMutation.mutate({
+                                                            message_id: msg.id,
+                                                            conversation_id: msg.conversation_id,
+                                                        });
+                                                        setOpenMenuId(null);
+                                                    }}
+                                                >
+                                                    <Trash2 size={14} />
+                                                    Delete message
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Bubble */}
                                 <div
                                     className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed
-                      ${isHost
+                                        ${isHost
                                             ? 'bg-accent text-white rounded-br-md'
                                             : 'bg-dark-800 text-dark-200 rounded-bl-md'
                                         }`}

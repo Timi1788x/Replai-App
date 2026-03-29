@@ -34,6 +34,14 @@ async function fetchMessages(conversationId: string): Promise<MessageRow[]> {
 export function useMessages(conversationId: string | null) {
     const queryClient = useQueryClient();
 
+    // ── Refetch on conversation change to catch messages missed while away ──
+    useEffect(() => {
+        if (!conversationId) return;
+        queryClient.invalidateQueries({
+            queryKey: messageKeys.byConversation(conversationId),
+        });
+    }, [conversationId, queryClient]);
+
     // ── Realtime subscription ──
     useEffect(() => {
         if (!conversationId) return;

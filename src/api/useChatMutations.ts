@@ -9,6 +9,8 @@ import type {
     SendMessagePayload,
     MarkAsReadPayload,
     UpdateDraftPayload,
+    DeleteMessagePayload,
+    PauseAutoRespondPayload,
 } from '../types/database';
 
 // ══════════════════════════════════════════════════════════════
@@ -140,14 +142,13 @@ export function useSendMessage() {
             }
         },
 
-        // ── Always refetch to ensure consistency ───────────────
+        // ── Refetch messages to ensure consistency ────────────────
+        // Only invalidate messages, not conversations — a blanket conversation
+        // refetch races with realtime and can overwrite unread statuses.
         onSettled: (_data, _error, _payload, context) => {
             if (!context) return;
             queryClient.invalidateQueries({
                 queryKey: messageKeys.byConversation(context.conversationId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: conversationKeys.all,
             });
         },
     });
@@ -210,17 +211,17 @@ export function useMarkAsRead() {
             );
         },
 
-        // ── Error: rollback ────────────────────────────────────
+        // ── Error: rollback + refetch ───────────────────────────
         onError: (_err, _payload, context) => {
             if (context?.previousConversations !== undefined) {
                 queryClient.setQueryData(conversationKeys.all, context.previousConversations);
             }
-        },
-
-        // ── Always refetch ─────────────────────────────────────
-        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: conversationKeys.all });
         },
+
+        // NOTE: no onSettled refetch — optimistic update + onSuccess + realtime
+        // keep the cache correct. A blanket refetch races with realtime and can
+        // overwrite incoming unread statuses for OTHER conversations.
     });
 }
 
@@ -296,6 +297,127 @@ export function useUpdateDraft() {
 
         // ── Always refetch ─────────────────────────────────────
         onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+        },
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// usePauseAutoRespond
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Pauses auto-respond for a conversation for `duration_seconds`.
+ *
+ * Sets `auto_respond_paused_until` to now + duration. The
+ * AiDraftBanner will switch back to manual-approve mode until
+ * the timestamp expires or n8n calls auto_send_draft() first.
+ *
+ * Optimistic UI: the conversation's paused_until is set instantly.
+ */
+export function usePauseAutoRespond() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (payload: PauseAutoRespondPayload): Promise<void> => {
+            const pausedUntil = new Date(
+                Date.now() + payload.duration_seconds * 1000,
+            ).toISOString();
+            const { error } = await supabase
+                .from('conversations')
+                .update({ auto_respond_paused_until: pausedUntil })
+                .eq('id', payload.conversation_id);
+            if (error) throw error;
+        },
+
+        onMutate: async (payload) => {
+            const convKey = conversationKeys.all;
+            await queryClient.cancelQueries({ queryKey: convKey });
+
+            const previous = queryClient.getQueryData<ConversationRow[]>(convKey);
+            const pausedUntil = new Date(
+                Date.now() + payload.duration_seconds * 1000,
+            ).toISOString();
+
+            queryClient.setQueryData<ConversationRow[]>(convKey, (old) =>
+                old?.map((c) =>
+                    c.id === payload.conversation_id
+                        ? { ...c, auto_respond_paused_until: pausedUntil }
+                        : c,
+                ) ?? [],
+            );
+
+            return { previous };
+        },
+
+        onError: (_err, _payload, context) => {
+            if (context?.previous !== undefined) {
+                queryClient.setQueryData(conversationKeys.all, context.previous);
+            }
+        },
+
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+        },
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// useDeleteMessage
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Deletes a host-sent message from the `messages` table.
+ *
+ * Optimistic UI: the message is removed from the cache immediately.
+ * On error it is restored. On settle, both message and conversation
+ * caches are invalidated so the chat list preview stays accurate.
+ *
+ * Only call this for host messages — guest messages must not be deleted.
+ */
+export function useDeleteMessage() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (payload: DeleteMessagePayload): Promise<void> => {
+            const { error } = await supabase
+                .from('messages')
+                .delete()
+                .eq('id', payload.message_id);
+            if (error) throw error;
+        },
+
+        // ── Optimistic update ──────────────────────────────────
+        onMutate: async (payload) => {
+            const msgKey = messageKeys.byConversation(payload.conversation_id);
+            await queryClient.cancelQueries({ queryKey: msgKey });
+
+            const previousMessages = queryClient.getQueryData<MessageRow[]>(msgKey);
+
+            queryClient.setQueryData<MessageRow[]>(msgKey, (old) =>
+                old?.filter((m) => m.id !== payload.message_id) ?? [],
+            );
+
+            return { previousMessages, conversationId: payload.conversation_id };
+        },
+
+        // ── Error: restore the removed message ─────────────────
+        onError: (_err, _payload, context) => {
+            if (!context) return;
+            if (context.previousMessages !== undefined) {
+                queryClient.setQueryData(
+                    messageKeys.byConversation(context.conversationId),
+                    context.previousMessages,
+                );
+            }
+        },
+
+        // ── Refetch both caches so last_message preview updates ─
+        onSettled: (_data, _error, _payload, context) => {
+            if (!context) return;
+            queryClient.invalidateQueries({
+                queryKey: messageKeys.byConversation(context.conversationId),
+            });
             queryClient.invalidateQueries({ queryKey: conversationKeys.all });
         },
     });
