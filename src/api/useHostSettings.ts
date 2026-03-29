@@ -31,6 +31,7 @@ export function useHostSettings() {
     return {
         settings: data ?? null,
         autoRespondEnabled: data?.auto_respond_enabled ?? false,
+        onboardingCompleted: data?.onboarding_completed ?? false,
         isLoading,
     };
 }
@@ -72,3 +73,42 @@ export function useToggleAutoRespond() {
         },
     });
 }
+
+/** Marks onboarding as completed (dismisses the checklist). Optimistic. */
+export function useDismissOnboarding() {
+    const queryClient = useQueryClient();
+    const { user } = useAuth();
+
+    return useMutation({
+        mutationFn: async (): Promise<HostSettingsRow> => {
+            if (!user) throw new Error('Not authenticated');
+            const { data, error } = await supabase
+                .from('host_settings')
+                .upsert({ user_id: user.id, onboarding_completed: true })
+                .select()
+                .single();
+            if (error) throw error;
+            return data as HostSettingsRow;
+        },
+
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: hostSettingsKeys.own });
+            const previous = queryClient.getQueryData<HostSettingsRow>(hostSettingsKeys.own);
+            queryClient.setQueryData<HostSettingsRow | null>(hostSettingsKeys.own, (old) =>
+                old ? { ...old, onboarding_completed: true } : null,
+            );
+            return { previous };
+        },
+
+        onError: (_err, _vars, context) => {
+            if (context?.previous !== undefined) {
+                queryClient.setQueryData(hostSettingsKeys.own, context.previous);
+            }
+        },
+
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: hostSettingsKeys.own });
+        },
+    });
+}
+

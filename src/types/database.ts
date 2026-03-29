@@ -134,6 +134,7 @@ export interface PauseAutoRespondPayload {
 export interface HostSettingsRow {
     user_id: string;
     auto_respond_enabled: boolean;
+    onboarding_completed: boolean;
     created_at: string;
     updated_at: string;
 }
