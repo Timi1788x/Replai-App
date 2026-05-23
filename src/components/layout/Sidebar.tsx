@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Inbox, CalendarDays, Settings, User, Zap } from 'lucide-react';
+import { Inbox, CalendarDays, Settings, User } from 'lucide-react';
 
 const navItems = [
     { to: '/inbox', icon: Inbox, label: 'Inbox' },
@@ -13,12 +13,9 @@ export default function Sidebar() {
         <aside className="w-[72px] h-screen bg-dark-900 border-r border-dark-800 flex flex-col items-center py-4 shrink-0">
             {/* Logo */}
             <div className="mb-8 flex flex-col items-center gap-1">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center shadow-lg shadow-accent/20">
-                    <Zap size={20} className="text-white" />
-                </div>
-                <span className="text-[9px] font-bold tracking-widest uppercase mt-1 text-center leading-tight">
-                    <span className="text-dark-400 block">Host</span>
-                    <span className="text-accent block">Buddy</span>
+                <img src="/replai-icon.svg" alt="REPLAI" className="w-10 h-10" />
+                <span className="text-[9px] font-bold tracking-widest mt-1 text-center leading-tight">
+                    <span className="text-white">REPL</span><span className="text-accent">AI</span>
                 </span>
             </div>
 

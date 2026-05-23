@@ -106,10 +106,10 @@ export default function LoginPage() {
 
                 {/* Logo */}
                 <div className="text-center space-y-2">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center mx-auto shadow-lg shadow-accent/20">
-                        <span className="text-white text-xl font-bold">H</span>
-                    </div>
-                    <h1 className="text-xl font-bold text-white">Hostbuddy</h1>
+                    <img src="/replai-icon.svg" alt="REPLAI" className="w-14 h-14 mx-auto" />
+                    <h1 className="text-xl font-bold">
+                        <span className="text-white">REPL</span><span className="text-accent">AI</span>
+                    </h1>
                     <p className="text-sm text-dark-400">
                         {mode === 'signin' ? 'Sign in to your account' : 'Create your account'}
                     </p>
